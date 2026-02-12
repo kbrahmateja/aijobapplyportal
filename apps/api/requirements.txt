@@ -12,6 +12,7 @@ langchain-core
 langgraph>=0.0.10
 python-dotenv
 httpx
+beautifulsoup4
 playwright
 openai
 anthropic
