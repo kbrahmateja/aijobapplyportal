@@ -1,0 +1,24 @@
+{
+    "name": "aijobapplyportal",
+    "version": "1.0.0",
+    "description": "AI-powered job application automation system",
+    "private": true,
+    "workspaces": [
+        "apps/web"
+    ],
+    "scripts": {
+        "dev:web": "cd apps/web && npm run dev",
+        "dev:api": "cd apps/api && source .venv/bin/activate && uvicorn main:app --reload",
+        "build:web": "cd apps/web && npm run build"
+    },
+    "keywords": [
+        "job-application",
+        "ai",
+        "automation",
+        "langchain",
+        "fastapi",
+        "nextjs"
+    ],
+    "author": "",
+    "license": "MIT"
+}
