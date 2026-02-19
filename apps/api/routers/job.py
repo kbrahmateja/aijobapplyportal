@@ -35,6 +35,17 @@ class FiltersResponse(BaseModel):
     sources: List[str]
     total_jobs: int
 
+# Terms that mean "available from anywhere in the world"
+WORLDWIDE_TERMS = [
+    "worldwide", "anywhere", "global", "international",
+    "remote", "work from home", "wfh", "distributed"
+]
+
+def is_worldwide_term(location: str) -> bool:
+    """Returns True if the location query itself means worldwide/remote."""
+    loc_lower = location.lower()
+    return any(wt in loc_lower for wt in WORLDWIDE_TERMS)
+
 @router.get("/", response_model=JobListResponse)
 def get_jobs(
     search: Optional[str] = Query(None, description="Search in title, company, description"),
@@ -45,11 +56,13 @@ def get_jobs(
     db: Session = Depends(get_db)
 ):
     """
-    Get jobs with advanced filtering and pagination.
+    Get jobs with intelligent filtering and pagination.
+    Location filter uses smart OR logic — specific location queries also include
+    worldwide/remote/anywhere jobs since those are available from any country.
     """
     query = db.query(Job)
     
-    # Apply search filter
+    # ── Search filter ──────────────────────────────────────────────────────────
     if search:
         search_filter = or_(
             Job.title.ilike(f"%{search}%"),
@@ -58,25 +71,39 @@ def get_jobs(
         )
         query = query.filter(search_filter)
     
-    # Apply location filter — match each word/token independently (AND logic)
-    # so "Remote India" matches jobs that have both "Remote" and "India" in location
+    # ── Location filter (INTELLIGENT) ─────────────────────────────────────────
+    # Strategy:
+    #   a) Match jobs whose location field contains any of the search tokens
+    #   b) If the query is for a specific geography (not "remote"/"worldwide" itself),
+    #      ALSO include worldwide/remote/anywhere/null jobs (universally available)
     if location:
-        terms = [t.strip() for t in location.replace(',', ' ').split() if t.strip()]
-        for term in terms:
-            query = query.filter(Job.location.ilike(f"%{term}%"))
+        loc_stripped = location.strip()
+        tokens = [t.strip() for t in loc_stripped.replace(',', ' ').split() if len(t.strip()) > 1]
+        
+        conditions = []
+        
+        # (a) Direct token matches — OR across tokens for flexibility
+        for token in tokens:
+            conditions.append(Job.location.ilike(f"%{token}%"))
+        
+        # (b) Worldwide fallback — only when user isn't already searching for "remote"/"worldwide"
+        if not is_worldwide_term(loc_stripped):
+            for wt in WORLDWIDE_TERMS:
+                conditions.append(Job.location.ilike(f"%{wt}%"))
+            # Also include NULL/empty location (many scrapers omit location for remote roles)
+            conditions.append(Job.location.is_(None))
+            conditions.append(Job.location == "")
+        
+        query = query.filter(or_(*conditions))
     
-    # Apply source filter
+    # ── Source filter ─────────────────────────────────────────────────────────
     if source:
         query = query.filter(Job.source == source)
     
-    # Get total count before pagination
+    # ── Pagination ────────────────────────────────────────────────────────────
     total = query.count()
-    
-    # Calculate pagination
-    total_pages = (total + limit - 1) // limit  # Ceiling division
+    total_pages = (total + limit - 1) // limit
     skip = (page - 1) * limit
-    
-    # Apply pagination and ordering
     jobs = query.order_by(Job.posted_at.desc()).offset(skip).limit(limit).all()
     
     return JobListResponse(
@@ -92,24 +119,23 @@ def get_filters(db: Session = Depends(get_db)):
     """
     Get available filter options and metadata.
     """
-    # Get unique locations (excluding None/empty)
-    locations = db.query(Job.location).filter(Job.location.isnot(None)).distinct().all()
-    locations = [loc[0] for loc in locations if loc[0]]
+    # All unique non-empty locations
+    locations = db.query(Job.location).filter(
+        Job.location.isnot(None),
+        Job.location != ""
+    ).distinct().all()
+    locations = sorted([loc[0] for loc in locations if loc[0] and len(loc[0]) < 80])
     
-    # Get unique sources
+    # All sources
     sources = db.query(Job.source).distinct().all()
-    sources = [src[0] for src in sources]
+    sources = [src[0] for src in sources if src[0]]
     
-    # Extract categories from job titles (basic heuristic)
-    # In production, you'd have a dedicated category column
     categories = ["All", "Engineering", "Design", "Product", "Marketing", "Data"]
-    
-    # Get total job count
     total_jobs = db.query(Job).count()
     
     return FiltersResponse(
         categories=categories,
-        locations=sorted(locations),  # All unique locations
+        locations=locations,
         sources=sources,
         total_jobs=total_jobs
     )
