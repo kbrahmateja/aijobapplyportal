@@ -72,29 +72,28 @@ def get_jobs(
         query = query.filter(search_filter)
     
     # ── Location filter (INTELLIGENT) ─────────────────────────────────────────
-    # Strategy:
-    #   a) Match jobs whose location field contains any of the search tokens
-    #   b) If the query is for a specific geography (not "remote"/"worldwide" itself),
-    #      ALSO include worldwide/remote/anywhere/null jobs (universally available)
+    # For ANY location query, we:
+    #   a) Match jobs whose location field contains the search tokens (OR)
+    #   b) Always include all worldwide/remote/null-location jobs (universally available)
     if location:
         loc_stripped = location.strip()
         tokens = [t.strip() for t in loc_stripped.replace(',', ' ').split() if len(t.strip()) > 1]
         
         conditions = []
         
-        # (a) Direct token matches — OR across tokens for flexibility
+        # (a) Direct token matches
         for token in tokens:
             conditions.append(Job.location.ilike(f"%{token}%"))
         
-        # (b) Worldwide fallback — only when user isn't already searching for "remote"/"worldwide"
-        if not is_worldwide_term(loc_stripped):
-            for wt in WORLDWIDE_TERMS:
-                conditions.append(Job.location.ilike(f"%{wt}%"))
-            # Also include NULL/empty location (many scrapers omit location for remote roles)
-            conditions.append(Job.location.is_(None))
-            conditions.append(Job.location == "")
+        # (b) Always include worldwide/remote/anywhere + null-location jobs
+        # (these are available from any country, including the searched one)
+        for wt in WORLDWIDE_TERMS:
+            conditions.append(Job.location.ilike(f"%{wt}%"))
+        conditions.append(Job.location.is_(None))
+        conditions.append(Job.location == "")
         
         query = query.filter(or_(*conditions))
+
     
     # ── Source filter ─────────────────────────────────────────────────────────
     if source:
