@@ -73,26 +73,44 @@ def get_jobs(
         query = query.filter(search_filter)
     
     # ── Location filter (INTELLIGENT) ─────────────────────────────────────────
-    # For ANY location query, we:
+    # Fallback logic:
     #   a) Match jobs whose location field contains the search tokens (OR)
-    #   b) Always include all worldwide/remote/null-location jobs (universally available)
+    #   b) Include truly worldwide jobs:
+    #      - NULL/empty location (scrapers often omit for worldwide remote roles)
+    #      - location contains "worldwide", "anywhere", "global", "international"
+    #      - location contains "remote" BUT has no country suffix
+    #        (i.e. no separator like " - ", ", ", "/", ":" after "remote")
     if location:
         loc_stripped = location.strip()
         tokens = [t.strip() for t in loc_stripped.replace(',', ' ').split() if len(t.strip()) > 1]
-        
+
         conditions = []
-        
-        # (a) Direct token matches
+
+        # (a) Direct token matches — OR across tokens
         for token in tokens:
             conditions.append(Job.location.ilike(f"%{token}%"))
-        
-        # (b) Always include worldwide/remote/anywhere + null-location jobs
-        # (these are available from any country, including the searched one)
+
+        # (b) Worldwide fallback — truly unrestricted jobs
+        # 1. Pure global terms
         for wt in WORLDWIDE_TERMS:
             conditions.append(Job.location.ilike(f"%{wt}%"))
+
+        # 2. "Remote" ONLY if no country suffix separators
+        #    This includes "Remote" but excludes "Remote - US", "Remote, USA", "Remote: Spain"
+        from sqlalchemy import and_, not_
+        pure_remote = and_(
+            Job.location.ilike("%remote%"),
+            not_(Job.location.contains(" - ")),
+            not_(Job.location.contains(", ")),
+            not_(Job.location.contains("/")),
+            not_(Job.location.contains(":")),
+        )
+        conditions.append(pure_remote)
+
+        # 3. NULL/empty location (truly worldwide or untagged)
         conditions.append(Job.location.is_(None))
         conditions.append(Job.location == "")
-        
+
         query = query.filter(or_(*conditions))
 
     
