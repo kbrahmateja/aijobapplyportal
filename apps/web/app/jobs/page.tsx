@@ -181,6 +181,7 @@ export default function JobsPage() {
                         <div className="w-52 flex-shrink-0">
                             <LocationSearch
                                 selectedLocation={selectedLocation}
+                                dbLocations={filtersData.locations}
                                 onLocationChange={(loc) => handleFilterChange(() => setSelectedLocation(loc))}
                             />
                         </div>
