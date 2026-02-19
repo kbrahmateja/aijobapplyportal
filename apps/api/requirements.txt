@@ -23,3 +23,6 @@ python-multipart
 pgvector
 reportlab
 python-jose[cryptography]
+python-docx
+mammoth
+striprtf

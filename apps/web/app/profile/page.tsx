@@ -48,6 +48,7 @@ export default function ProfilePage() {
             }
         } catch (error) {
             console.error("Error uploading:", error)
+            alert("Upload failed. Please try again with a supported format (PDF, DOCX, DOC, TXT, RTF).")
         } finally {
             setUploading(false)
         }
@@ -82,14 +83,14 @@ export default function ProfilePage() {
                 <Card>
                     <CardHeader>
                         <CardTitle>Resume Upload</CardTitle>
-                        <CardDescription>Upload your resume (PDF) to get AI-powered job matches.</CardDescription>
+                        <CardDescription>Upload your resume — PDF, DOCX, DOC, TXT, or RTF supported.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-4">
                             <div className="grid w-full max-w-sm items-center gap-1.5">
                                 <input
                                     type="file"
-                                    accept=".pdf"
+                                    accept=".pdf,.docx,.doc,.txt,.rtf,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/msword,text/plain,application/rtf"
                                     onChange={handleFileChange}
                                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                                 />
