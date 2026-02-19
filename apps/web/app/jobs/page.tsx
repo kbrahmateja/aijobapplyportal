@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { JobCard } from "@/components/JobCard"
 import { SearchBar } from "@/components/SearchBar"
+import { LocationSearch } from "@/components/LocationSearch"
 import { FilterSidebar } from "@/components/FilterSidebar"
 import { ViewToggle } from "@/components/ViewToggle"
 import { Loader2 } from "lucide-react"
@@ -155,14 +156,22 @@ export default function JobsPage() {
             {/* Sticky Header with Search */}
             <div className="sticky top-0 z-20 bg-white shadow-sm border-b">
                 <div className="container mx-auto py-3 px-4">
-                    {/* Search Bar */}
-                    <div className="mb-2">
-                        <SearchBar onSearchChange={(search) => {
-                            if (search !== searchTerm) {
-                                setCurrentPage(1)
-                                setSearchTerm(search)
-                            }
-                        }} />
+                    {/* Search + Location row */}
+                    <div className="flex gap-2 mb-2">
+                        <div className="flex-1">
+                            <SearchBar onSearchChange={(search) => {
+                                if (search !== searchTerm) {
+                                    setCurrentPage(1)
+                                    setSearchTerm(search)
+                                }
+                            }} />
+                        </div>
+                        <div className="w-56">
+                            <LocationSearch
+                                selectedLocation={selectedLocation}
+                                onLocationChange={(loc) => handleFilterChange(() => setSelectedLocation(loc))}
+                            />
+                        </div>
                     </div>
 
                     {/* Stats and View Toggle */}
