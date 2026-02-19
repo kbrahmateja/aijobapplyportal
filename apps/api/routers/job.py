@@ -58,12 +58,12 @@ def get_jobs(
         )
         query = query.filter(search_filter)
     
-    # Apply location filter
+    # Apply location filter — match each word/token independently (AND logic)
+    # so "Remote India" matches jobs that have both "Remote" and "India" in location
     if location:
-        if location.lower() == "remote":
-            query = query.filter(Job.location.ilike("%remote%"))
-        else:
-            query = query.filter(Job.location.ilike(f"%{location}%"))
+        terms = [t.strip() for t in location.replace(',', ' ').split() if t.strip()]
+        for term in terms:
+            query = query.filter(Job.location.ilike(f"%{term}%"))
     
     # Apply source filter
     if source:
@@ -109,7 +109,7 @@ def get_filters(db: Session = Depends(get_db)):
     
     return FiltersResponse(
         categories=categories,
-        locations=sorted(locations[:20]),  # Top 20 locations
+        locations=sorted(locations),  # All unique locations
         sources=sources,
         total_jobs=total_jobs
     )
