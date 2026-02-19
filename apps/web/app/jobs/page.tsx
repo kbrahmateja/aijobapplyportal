@@ -155,9 +155,19 @@ export default function JobsPage() {
         <div className="bg-gray-50">
             {/* Sticky Header with Search */}
             <div className="sticky top-0 z-20 bg-white shadow-sm border-b">
-                <div className="container mx-auto py-3 px-4">
-                    {/* Search + Location row */}
-                    <div className="flex gap-2 mb-2">
+                <div className="container mx-auto py-2 px-4">
+                    {/* All controls in ONE row: count | search | location | toggle */}
+                    <div className="flex items-center gap-2">
+                        {/* Job count */}
+                        <div className="text-sm text-muted-foreground whitespace-nowrap flex-shrink-0">
+                            {loading ? (
+                                <span>Loading...</span>
+                            ) : (
+                                <span><span className="font-semibold text-foreground">{totalJobs.toLocaleString()}</span> jobs</span>
+                            )}
+                        </div>
+
+                        {/* Keyword search */}
                         <div className="flex-1">
                             <SearchBar onSearchChange={(search) => {
                                 if (search !== searchTerm) {
@@ -166,39 +176,30 @@ export default function JobsPage() {
                                 }
                             }} />
                         </div>
-                        <div className="w-56">
+
+                        {/* Location search */}
+                        <div className="w-52 flex-shrink-0">
                             <LocationSearch
                                 selectedLocation={selectedLocation}
                                 onLocationChange={(loc) => handleFilterChange(() => setSelectedLocation(loc))}
                             />
                         </div>
-                    </div>
 
-                    {/* Stats and View Toggle */}
-                    <div className="flex justify-between items-center">
-                        <div className="text-sm text-muted-foreground">
-                            {loading ? (
-                                <p>Loading...</p>
-                            ) : (
-                                <p>
-                                    <span className="font-medium text-foreground">{totalJobs.toLocaleString()}</span> jobs
-                                    {searchTerm && ` for "${searchTerm}"`}
-                                    {selectedCategory && ` · ${selectedCategory}`}
-                                    {selectedSource && ` · ${selectedSource}`}
-                                </p>
-                            )}
+                        {/* View toggle */}
+                        <div className="flex-shrink-0">
+                            <ViewToggle view={viewMode} onViewChange={setViewMode} />
                         </div>
-                        <ViewToggle view={viewMode} onViewChange={setViewMode} />
                     </div>
                 </div>
             </div>
+
 
             {/* Main Content */}
             <div className="container mx-auto py-4 px-4">
                 <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                     {/* Sticky Filters Sidebar */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-[120px]">
+                        <div className="sticky top-[58px]">
                             <FilterSidebar
                                 categories={filtersData.categories}
                                 locations={filtersData.locations}
