@@ -35,10 +35,11 @@ class FiltersResponse(BaseModel):
     sources: List[str]
     total_jobs: int
 
-# Terms that mean "available from anywhere in the world"
+# Terms that mean "available from ANYWHERE in the world" — no country restriction
+# NOTE: "remote" is intentionally excluded because "Remote - US", "Remote: Spain"
+# etc. are country-restricted remote jobs. Only include purely global terms.
 WORLDWIDE_TERMS = [
-    "worldwide", "anywhere", "global", "international",
-    "remote", "work from home", "wfh", "distributed"
+    "worldwide", "anywhere", "global", "international", "distributed"
 ]
 
 def is_worldwide_term(location: str) -> bool:
