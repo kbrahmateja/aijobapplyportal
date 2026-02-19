@@ -95,7 +95,7 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
                             </a>
                             <button
                                 onClick={handleAIApply}
-                                disabled={!defaultResumeId}
+                                disabled={isTailoring}
                                 className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-medium"
                             >
                                 Apply w/ AI <Sparkles className="h-3 w-3" />
@@ -157,7 +157,7 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
                     </a>
                     <button
                         onClick={handleAIApply}
-                        disabled={!defaultResumeId}
+                        disabled={isTailoring}
                         className="flex-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-medium text-xs"
                     >
                         Apply w/ AI <Sparkles className="h-3.5 w-3.5" />
