@@ -2,6 +2,7 @@
 
 import { Calendar, MapPin, ExternalLink, Sparkles, Building2 } from "lucide-react"
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { TailorResumeModal } from "./TailorResumeModal"
 
 interface Job {
@@ -38,10 +39,12 @@ function SourceBadge({ source }: { source: string }) {
 
 export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProps) {
     const [isTailoring, setIsTailoring] = useState(false)
+    const router = useRouter()
 
     const handleAIApply = () => {
         if (!defaultResumeId) {
-            alert("Please upload a resume first via your Profile page.")
+            alert("Redirecting to profile: Please upload a resume first.")
+            router.push("/profile")
             return
         }
         setIsTailoring(true)
