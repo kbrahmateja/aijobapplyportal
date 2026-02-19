@@ -1,0 +1,51 @@
+name: Daily Job Scraper
+
+on:
+  schedule:
+    # Runs every day at 2:00 AM UTC
+    - cron: "0 2 * * *"
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions UI
+
+jobs:
+  scrape-jobs:
+    name: Scrape Jobs from All Sources
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: apps/api
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: apps/api/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright browsers
+        run: playwright install chromium --with-deps
+
+      - name: Run job scraper
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLERK_API_KEY: ${{ secrets.CLERK_API_KEY }}
+          CLERK_ISSUER: ${{ secrets.CLERK_ISSUER }}
+        run: python scrape_jobs.py
+
+      - name: Upload scraper logs (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraper-logs
+          path: apps/api/*.log
+          retention-days: 7
