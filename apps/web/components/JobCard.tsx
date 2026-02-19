@@ -20,6 +20,21 @@ interface JobCardProps {
     viewMode?: "grid" | "list"
 }
 
+const SOURCE_COLORS: Record<string, string> = {
+    WeWorkRemotely: "bg-green-50 text-green-700",
+    RemoteOK: "bg-red-50 text-red-700",
+    Remotive: "bg-purple-50 text-purple-700",
+}
+
+function SourceBadge({ source }: { source: string }) {
+    const color = SOURCE_COLORS[source] || "bg-blue-50 text-blue-700"
+    return (
+        <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${color}`}>
+            {source}
+        </span>
+    )
+}
+
 export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProps) {
     const [applying, setApplying] = useState(false)
 
@@ -55,55 +70,56 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
 
     const formatDate = (dateString: string) => {
         const date = new Date(dateString)
-        return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+        const now = new Date()
+        const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24))
+        if (diffDays === 0) return "Today"
+        if (diffDays === 1) return "Yesterday"
+        if (diffDays < 7) return `${diffDays}d ago`
+        return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
     }
 
     if (viewMode === "list") {
         return (
-            <div className="bg-white rounded-lg border hover:shadow-md transition-shadow p-4 flex items-center gap-4">
-                <div className="flex-1">
-                    <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                            <h3 className="font-semibold text-lg hover:text-blue-600 transition-colors line-clamp-1">
+            <div className="bg-white rounded-lg border hover:shadow-md transition-shadow p-3 flex items-center gap-4">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                            <h3 className="font-semibold text-sm hover:text-blue-600 transition-colors line-clamp-1">
                                 {job.title}
                             </h3>
-                            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                            <div className="flex items-center flex-wrap gap-x-3 gap-y-0.5 mt-1 text-xs text-muted-foreground">
                                 <div className="flex items-center gap-1">
-                                    <Building2 className="h-4 w-4" />
-                                    <span>{job.company}</span>
+                                    <Building2 className="h-3 w-3 flex-shrink-0" />
+                                    <span className="truncate">{job.company}</span>
                                 </div>
                                 {job.location && (
                                     <div className="flex items-center gap-1">
-                                        <MapPin className="h-4 w-4" />
-                                        <span>{job.location}</span>
+                                        <MapPin className="h-3 w-3 flex-shrink-0" />
+                                        <span className="truncate">{job.location}</span>
                                     </div>
                                 )}
                                 <div className="flex items-center gap-1">
-                                    <Calendar className="h-4 w-4" />
+                                    <Calendar className="h-3 w-3 flex-shrink-0" />
                                     <span>{formatDate(job.posted_at)}</span>
                                 </div>
-                                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                                    {job.source}
-                                </span>
+                                <SourceBadge source={job.source} />
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
                             <a
                                 href={job.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1 text-sm font-medium"
+                                className="px-3 py-1.5 border rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-1 text-xs font-medium"
                             >
-                                View
-                                <ExternalLink className="h-3 w-3" />
+                                View <ExternalLink className="h-3 w-3" />
                             </a>
                             <button
                                 onClick={handleAIApply}
                                 disabled={applying || !defaultResumeId}
-                                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-sm font-medium"
+                                className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-medium"
                             >
-                                {applying ? "Applying..." : "Apply w/ AI"}
-                                <Sparkles className="h-3 w-3" />
+                                {applying ? "Applying..." : "Apply w/ AI"} <Sparkles className="h-3 w-3" />
                             </button>
                         </div>
                     </div>
@@ -112,59 +128,49 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
         )
     }
 
-    // Grid view (default)
+    // Grid view
     return (
-        <div className="bg-white rounded-lg border hover:shadow-lg transition-shadow overflow-hidden">
-            <div className="p-6">
-                <div className="flex justify-between items-start mb-3">
-                    <h3 className="font-semibold text-lg hover:text-blue-600 transition-colors line-clamp-2">
+        <div className="bg-white rounded-lg border hover:shadow-md transition-shadow overflow-hidden">
+            <div className="p-4">
+                <div className="flex justify-between items-start gap-2 mb-2">
+                    <h3 className="font-semibold text-sm hover:text-blue-600 transition-colors line-clamp-2 leading-snug">
                         {job.title}
                     </h3>
-                    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-medium">
-                        {job.source}
-                    </span>
+                    <SourceBadge source={job.source} />
                 </div>
 
-                <div className="space-y-2 mb-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4" />
-                        <span>{job.company}</span>
+                <div className="space-y-1 mb-3 text-xs text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                        <Building2 className="h-3.5 w-3.5 flex-shrink-0" />
+                        <span className="truncate">{job.company}</span>
                     </div>
                     {job.location && (
-                        <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
+                        <div className="flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5 flex-shrink-0" />
                             <span className="line-clamp-1">{job.location}</span>
                         </div>
                     )}
-                    <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
+                    <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 flex-shrink-0" />
                         <span>{formatDate(job.posted_at)}</span>
                     </div>
                 </div>
-
-                {job.description && (
-                    <p className="text-sm text-gray-600 mb-4 line-clamp-2">
-                        {job.description}
-                    </p>
-                )}
 
                 <div className="flex gap-2">
                     <a
                         href={job.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 font-medium text-sm"
+                        className="flex-1 px-3 py-1.5 border rounded-lg hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5 font-medium text-xs"
                     >
-                        View
-                        <ExternalLink className="h-4 w-4" />
+                        View <ExternalLink className="h-3 w-3" />
                     </a>
                     <button
                         onClick={handleAIApply}
                         disabled={applying || !defaultResumeId}
-                        className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium text-sm"
+                        className="flex-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-medium text-xs"
                     >
-                        {applying ? "Applying..." : "Apply w/ AI"}
-                        <Sparkles className="h-4 w-4" />
+                        {applying ? "Applying..." : "Apply w/ AI"} <Sparkles className="h-3.5 w-3.5" />
                     </button>
                 </div>
             </div>

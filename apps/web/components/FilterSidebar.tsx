@@ -1,6 +1,7 @@
 "use client"
 
-import { X } from "lucide-react"
+import { X, ChevronDown, ChevronUp } from "lucide-react"
+import { useState } from "react"
 
 interface FilterChipProps {
     label: string
@@ -9,17 +10,23 @@ interface FilterChipProps {
 
 export function FilterChip({ label, onRemove }: FilterChipProps) {
     return (
-        <div className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
+        <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
             {label}
             <button
                 onClick={onRemove}
                 className="hover:bg-blue-200 rounded-full p-0.5 transition-colors"
                 aria-label={`Remove ${label} filter`}
             >
-                <X className="h-3 w-3" />
+                <X className="h-2.5 w-2.5" />
             </button>
         </div>
     )
+}
+
+const SOURCE_COLORS: Record<string, string> = {
+    WeWorkRemotely: "bg-green-50 text-green-700 border-green-200",
+    RemoteOK: "bg-red-50 text-red-700 border-red-200",
+    Remotive: "bg-purple-50 text-purple-700 border-purple-200",
 }
 
 interface FilterSidebarProps {
@@ -45,38 +52,51 @@ export function FilterSidebar({
     onSourceChange,
     onCategoryChange
 }: FilterSidebarProps) {
-    return (
-        <div className="space-y-6 p-4 bg-white rounded-lg border">
-            <div>
-                <h3 className="font-semibold mb-3 text-lg">Filters</h3>
+    const [showAllLocations, setShowAllLocations] = useState(false)
+    const visibleLocations = showAllLocations ? locations : locations.slice(0, 8)
 
-                {/* Active Filters */}
-                {(selectedLocation || selectedSource || selectedCategory) && (
-                    <div className="mb-4 flex flex-wrap gap-2">
-                        {selectedCategory && (
-                            <FilterChip label={selectedCategory} onRemove={() => onCategoryChange(null)} />
-                        )}
-                        {selectedLocation && (
-                            <FilterChip label={selectedLocation} onRemove={() => onLocationChange(null)} />
-                        )}
-                        {selectedSource && (
-                            <FilterChip label={selectedSource} onRemove={() => onSourceChange(null)} />
-                        )}
-                    </div>
+    const hasActiveFilters = selectedLocation || selectedSource || selectedCategory
+
+    return (
+        <div className="space-y-4 p-3 bg-white rounded-lg border text-sm">
+            <div className="flex items-center justify-between">
+                <h3 className="font-semibold">Filters</h3>
+                {hasActiveFilters && (
+                    <button
+                        onClick={() => { onCategoryChange(null); onLocationChange(null); onSourceChange(null) }}
+                        className="text-xs text-blue-600 hover:underline"
+                    >
+                        Clear all
+                    </button>
                 )}
             </div>
 
-            {/* Category Filter */}
+            {/* Active Filters */}
+            {hasActiveFilters && (
+                <div className="flex flex-wrap gap-1.5">
+                    {selectedCategory && (
+                        <FilterChip label={selectedCategory} onRemove={() => onCategoryChange(null)} />
+                    )}
+                    {selectedLocation && (
+                        <FilterChip label={selectedLocation} onRemove={() => onLocationChange(null)} />
+                    )}
+                    {selectedSource && (
+                        <FilterChip label={selectedSource} onRemove={() => onSourceChange(null)} />
+                    )}
+                </div>
+            )}
+
+            {/* Category Filter — horizontal chips */}
             <div>
-                <h4 className="font-medium mb-2">Category</h4>
-                <div className="space-y-1">
+                <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider mb-2">Category</h4>
+                <div className="flex flex-wrap gap-1.5">
                     {categories.map((cat) => (
                         <button
                             key={cat}
                             onClick={() => onCategoryChange(cat === selectedCategory ? null : cat)}
-                            className={`w-full text-left px-3 py-2 rounded-md transition-colors ${selectedCategory === cat
-                                    ? "bg-blue-100 text-blue-900 font-medium"
-                                    : "hover:bg-gray-100"
+                            className={`px-2.5 py-1 rounded-full text-xs border transition-colors ${selectedCategory === cat
+                                    ? "bg-blue-600 text-white border-blue-600"
+                                    : "bg-white border-gray-200 hover:border-blue-400 hover:text-blue-600"
                                 }`}
                         >
                             {cat}
@@ -85,39 +105,63 @@ export function FilterSidebar({
                 </div>
             </div>
 
-            {/* Location Filter */}
+            {/* Source Filter — colored pills */}
             <div>
-                <h4 className="font-medium mb-2">Location</h4>
-                <select
-                    value={selectedLocation || ""}
-                    onChange={(e) => onLocationChange(e.target.value || null)}
-                    className="w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                    <option value="">All Locations</option>
-                    {locations.map((loc) => (
-                        <option key={loc} value={loc}>
-                            {loc}
-                        </option>
-                    ))}
-                </select>
+                <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider mb-2">Job Board</h4>
+                <div className="flex flex-col gap-1">
+                    {sources.map((src) => {
+                        const color = SOURCE_COLORS[src] || "bg-blue-50 text-blue-700 border-blue-200"
+                        return (
+                            <button
+                                key={src}
+                                onClick={() => onSourceChange(src === selectedSource ? null : src)}
+                                className={`w-full text-left px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all ${selectedSource === src
+                                        ? `${color} ring-1 ring-offset-1 ring-current`
+                                        : "bg-white border-gray-200 hover:border-gray-300"
+                                    }`}
+                            >
+                                {src}
+                            </button>
+                        )
+                    })}
+                </div>
             </div>
 
-            {/* Source Filter */}
+            {/* Location Filter */}
             <div>
-                <h4 className="font-medium mb-2">Job Board</h4>
-                <div className="space-y-1">
-                    {sources.map((src) => (
+                <h4 className="font-medium text-xs text-muted-foreground uppercase tracking-wider mb-2">Location</h4>
+                <div className="flex flex-col gap-1">
+                    <button
+                        onClick={() => onLocationChange(null)}
+                        className={`w-full text-left px-2.5 py-1 rounded text-xs transition-colors ${!selectedLocation ? "font-semibold text-blue-600" : "text-muted-foreground hover:text-foreground"
+                            }`}
+                    >
+                        All Locations
+                    </button>
+                    {visibleLocations.map((loc) => (
                         <button
-                            key={src}
-                            onClick={() => onSourceChange(src === selectedSource ? null : src)}
-                            className={`w-full text-left px-3 py-2 rounded-md transition-colors ${selectedSource === src
-                                    ? "bg-blue-100 text-blue-900 font-medium"
-                                    : "hover:bg-gray-100"
+                            key={loc}
+                            onClick={() => onLocationChange(loc === selectedLocation ? null : loc)}
+                            className={`w-full text-left px-2.5 py-1 rounded text-xs transition-colors truncate ${selectedLocation === loc
+                                    ? "font-semibold text-blue-600"
+                                    : "text-muted-foreground hover:text-foreground"
                                 }`}
                         >
-                            {src}
+                            {loc}
                         </button>
                     ))}
+                    {locations.length > 8 && (
+                        <button
+                            onClick={() => setShowAllLocations(!showAllLocations)}
+                            className="flex items-center gap-1 text-xs text-blue-600 hover:underline px-2.5 py-1"
+                        >
+                            {showAllLocations ? (
+                                <><ChevronUp className="h-3 w-3" /> Show less</>
+                            ) : (
+                                <><ChevronDown className="h-3 w-3" /> +{locations.length - 8} more</>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
         </div>

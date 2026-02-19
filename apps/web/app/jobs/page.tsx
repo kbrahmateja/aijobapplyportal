@@ -83,11 +83,8 @@ export default function JobsPage() {
     // Fetch jobs when filters or page changes
     useEffect(() => {
         async function fetchJobs() {
-            console.log('[Jobs] Fetching jobs for page:', currentPage)
-            setLoading(true)
 
-            // Scroll to top when filters change (but NOT on pagination change)
-            // This ensures filtered results are visible, especially for single results
+            setLoading(true)
             if (currentPage === 1) {
                 window.scrollTo({ top: 0, behavior: 'smooth' })
             }
@@ -104,11 +101,9 @@ export default function JobsPage() {
                     params.append("search", selectedCategory)
                 }
 
-                console.log('[Jobs] API call:', `${apiUrl}/api/jobs/?${params.toString()}`)
                 const jobsRes = await fetch(`${apiUrl}/api/jobs/?${params.toString()}`)
                 if (jobsRes.ok) {
                     const data: JobListResponse = await jobsRes.json()
-                    console.log('[Jobs] Received data:', { page: data.page, total: data.total, jobs: data.jobs.length })
                     setJobs(data.jobs)
                     setTotalPages(data.total_pages)
                     setTotalJobs(data.total)
@@ -156,18 +151,13 @@ export default function JobsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="bg-gray-50">
             {/* Sticky Header with Search */}
             <div className="sticky top-0 z-20 bg-white shadow-sm border-b">
-                <div className="container mx-auto py-6 px-4">
-                    <h1 className="text-4xl font-bold mb-4 text-center bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
-                        Job Discovery
-                    </h1>
-
+                <div className="container mx-auto py-3 px-4">
                     {/* Search Bar */}
-                    <div className="mb-4">
+                    <div className="mb-2">
                         <SearchBar onSearchChange={(search) => {
-                            console.log('[SearchBar] Search changed to:', search)
                             if (search !== searchTerm) {
                                 setCurrentPage(1)
                                 setSearchTerm(search)
@@ -177,13 +167,15 @@ export default function JobsPage() {
 
                     {/* Stats and View Toggle */}
                     <div className="flex justify-between items-center">
-                        <div className="text-muted-foreground">
+                        <div className="text-sm text-muted-foreground">
                             {loading ? (
                                 <p>Loading...</p>
                             ) : (
                                 <p>
-                                    Showing {jobs.length} of {totalJobs} jobs
+                                    <span className="font-medium text-foreground">{totalJobs.toLocaleString()}</span> jobs
                                     {searchTerm && ` for "${searchTerm}"`}
+                                    {selectedCategory && ` · ${selectedCategory}`}
+                                    {selectedSource && ` · ${selectedSource}`}
                                 </p>
                             )}
                         </div>
@@ -193,11 +185,11 @@ export default function JobsPage() {
             </div>
 
             {/* Main Content */}
-            <div className="container mx-auto py-6 px-4">
-                <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <div className="container mx-auto py-4 px-4">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
                     {/* Sticky Filters Sidebar */}
                     <div className="lg:col-span-1">
-                        <div className="sticky top-[280px]">
+                        <div className="sticky top-[120px]">
                             <FilterSidebar
                                 categories={filtersData.categories}
                                 locations={filtersData.locations}
@@ -228,8 +220,8 @@ export default function JobsPage() {
                                 {/* Jobs Grid or List View */}
                                 <div className={
                                     viewMode === "grid"
-                                        ? "grid grid-cols-1 md:grid-cols-2 gap-6"
-                                        : "flex flex-col gap-4"
+                                        ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+                                        : "flex flex-col gap-2"
                                 }>
                                     {jobs.map((job) => (
                                         <JobCard
@@ -246,10 +238,8 @@ export default function JobsPage() {
                                     <div className="mt-8 flex justify-center items-center gap-4">
                                         <button
                                             onClick={() => {
-                                                console.log('[Pagination] Previous clicked, current page:', currentPage)
                                                 setCurrentPage(p => {
                                                     const newPage = Math.max(1, p - 1)
-                                                    console.log('[Pagination] Setting page to:', newPage)
                                                     return newPage
                                                 })
                                             }}
@@ -265,10 +255,8 @@ export default function JobsPage() {
                                         </div>
                                         <button
                                             onClick={() => {
-                                                console.log('[Pagination] Next clicked, current page:', currentPage, 'total pages:', totalPages)
                                                 setCurrentPage(p => {
                                                     const newPage = Math.min(totalPages, p + 1)
-                                                    console.log('[Pagination] Setting page to:', newPage)
                                                     return newPage
                                                 })
                                             }}
