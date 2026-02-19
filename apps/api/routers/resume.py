@@ -110,6 +110,29 @@ async def upload_resume(
     }
 
 
+@router.get("")
+@router.get("/")
+async def get_resumes(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all resumes for the current user.
+    """
+    resumes = db.query(Resume).filter(Resume.user_id == current_user.id).all()
+    
+    # We don't want to return the massive embedding vector
+    return [
+        {
+            "id": r.id,
+            "is_default": r.is_default,
+            "created_at": r.created_at,
+            "has_structured_data": r.structured_data is not None
+        }
+        for r in resumes
+    ]
+
+
 from pydantic import BaseModel
 
 class TailorRequest(BaseModel):
