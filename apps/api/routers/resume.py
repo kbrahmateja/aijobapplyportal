@@ -1,16 +1,21 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 from database import get_db
-from models import Resume, User
+from models import Resume, User, Job
 from services.resume.parser import ResumeParser
 from services.resume.embedding import EmbeddingService
 from services.resume.analyst import ResumeAnalyst
+from services.resume.tailor import ResumeTailor
+from services.resume.pdf_generator import PDFGenerator
 from auth import get_current_user
 
 router = APIRouter()
 parser = ResumeParser()
 embedding_service = EmbeddingService()
 analyst = ResumeAnalyst()
+tailor_service = ResumeTailor()
+pdf_generator = PDFGenerator()
 
 # Accepted MIME types → mapped to common extensions for display
 ACCEPTED_MIME_TYPES = {
@@ -103,3 +108,65 @@ async def upload_resume(
         "message": f"Resume uploaded successfully ({ext.upper()})",
         "data": structured_data
     }
+
+
+from pydantic import BaseModel
+
+class TailorRequest(BaseModel):
+    job_id: int
+
+
+@router.post("/{resume_id}/tailor")
+async def tailor_resume(
+    resume_id: int,
+    request: TailorRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Tailors a resume to a specific job description and returns a generated PDF.
+    """
+    # 1. Fetch Resume
+    resume = db.query(Resume).filter(
+        Resume.id == resume_id,
+        Resume.user_id == current_user.id
+    ).first()
+    
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+        
+    if not resume.structured_data:
+        raise HTTPException(status_code=400, detail="Resume has no structured data to tailor")
+
+    # 2. Fetch Job
+    job = db.query(Job).filter(Job.id == request.job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job_description = f"{job.title} at {job.company}\n\n{job.description}"
+
+    # 3. Tailor Resume Data
+    tailored_data = await tailor_service.tailor(
+        base_resume_data=resume.structured_data, 
+        job_description=job_description
+    )
+
+    # 4. Generate PDF
+    try:
+        pdf_bytes = pdf_generator.generate_pdf(tailored_data)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {e}")
+
+    # 5. Return PDF as downloadable file
+    # Clean company name for filename
+    clean_company = "".join([c for c in job.company if c.isalnum() or c in (" ", "_")]).strip()
+    filename = f"Tailored_Resume_{clean_company.replace(' ', '_')}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
+

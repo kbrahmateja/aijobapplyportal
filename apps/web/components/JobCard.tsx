@@ -2,6 +2,7 @@
 
 import { Calendar, MapPin, ExternalLink, Sparkles, Building2 } from "lucide-react"
 import { useState } from "react"
+import { TailorResumeModal } from "./TailorResumeModal"
 
 interface Job {
     id: number
@@ -36,36 +37,14 @@ function SourceBadge({ source }: { source: string }) {
 }
 
 export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProps) {
-    const [applying, setApplying] = useState(false)
+    const [isTailoring, setIsTailoring] = useState(false)
 
-    const handleAIApply = async () => {
+    const handleAIApply = () => {
         if (!defaultResumeId) {
-            alert("Please upload a resume first")
+            alert("Please upload a resume first via your Profile page.")
             return
         }
-
-        setApplying(true)
-        try {
-            const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/applications/apply`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    job_id: job.id,
-                    resume_id: defaultResumeId
-                })
-            })
-
-            if (response.ok) {
-                alert("Application submitted successfully!")
-            } else {
-                alert("Failed to apply. Please try again.")
-            }
-        } catch (error) {
-            console.error("Error applying:", error)
-            alert("An error occurred. Please try again.")
-        } finally {
-            setApplying(false)
-        }
+        setIsTailoring(true)
     }
 
     const formatDate = (dateString: string) => {
@@ -116,14 +95,25 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
                             </a>
                             <button
                                 onClick={handleAIApply}
-                                disabled={applying || !defaultResumeId}
+                                disabled={!defaultResumeId}
                                 className="px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 text-xs font-medium"
                             >
-                                {applying ? "Applying..." : "Apply w/ AI"} <Sparkles className="h-3 w-3" />
+                                Apply w/ AI <Sparkles className="h-3 w-3" />
                             </button>
                         </div>
                     </div>
                 </div>
+
+                {defaultResumeId && (
+                    <TailorResumeModal
+                        isOpen={isTailoring}
+                        onOpenChange={setIsTailoring}
+                        jobId={job.id}
+                        jobTitle={job.title}
+                        jobCompany={job.company}
+                        resumeId={defaultResumeId}
+                    />
+                )}
             </div>
         )
     }
@@ -167,12 +157,23 @@ export function JobCard({ job, defaultResumeId, viewMode = "grid" }: JobCardProp
                     </a>
                     <button
                         onClick={handleAIApply}
-                        disabled={applying || !defaultResumeId}
+                        disabled={!defaultResumeId}
                         className="flex-1 px-3 py-1.5 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-lg hover:from-blue-700 hover:to-cyan-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5 font-medium text-xs"
                     >
-                        {applying ? "Applying..." : "Apply w/ AI"} <Sparkles className="h-3.5 w-3.5" />
+                        Apply w/ AI <Sparkles className="h-3.5 w-3.5" />
                     </button>
                 </div>
+
+                {defaultResumeId && (
+                    <TailorResumeModal
+                        isOpen={isTailoring}
+                        onOpenChange={setIsTailoring}
+                        jobId={job.id}
+                        jobTitle={job.title}
+                        jobCompany={job.company}
+                        resumeId={defaultResumeId}
+                    />
+                )}
             </div>
         </div>
     )
