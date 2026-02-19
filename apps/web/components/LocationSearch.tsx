@@ -1,12 +1,11 @@
 "use client"
 
-import { MapPin, X, Loader2 } from "lucide-react"
+import { MapPin, X, Loader2, Search } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 
 interface LocationSearchProps {
     onLocationChange: (location: string | null) => void
     selectedLocation?: string | null
-    /** DB locations list — shown as primary suggestions */
     dbLocations?: string[]
 }
 
@@ -31,6 +30,9 @@ function formatNominatim(r: NominatimResult): string {
     return r.display_name.split(",").slice(0, 2).join(",").trim()
 }
 
+// Terms that are "place-like" — Nominatim can meaningfully geocode these
+const SKIP_NOMINATIM = ["worldwide", "anywhere", "global", "international", "remote", "wfh", "work from home", "distributed"]
+
 export function LocationSearch({ onLocationChange, selectedLocation, dbLocations = [] }: LocationSearchProps) {
     const [query, setQuery] = useState(selectedLocation || "")
     const [dbMatches, setDbMatches] = useState<string[]>([])
@@ -40,7 +42,7 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
     const containerRef = useRef<HTMLDivElement>(null)
     const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-    // Sync clear from outside (e.g. "Clear all" in sidebar)
+    // Sync clear from outside
     useEffect(() => {
         if (!selectedLocation) {
             setQuery("")
@@ -61,6 +63,13 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
         return () => document.removeEventListener("mousedown", handleClick)
     }, [])
 
+    const applyFilter = (value: string) => {
+        setQuery(value)
+        setShowDropdown(false)
+        setNominatimResults([])
+        onLocationChange(value)
+    }
+
     const handleInputChange = (value: string) => {
         setQuery(value)
 
@@ -72,53 +81,56 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
             return
         }
 
-        // Immediate DB match (client-side, instant)
+        // Always show dropdown when typing
+        setShowDropdown(true)
+
+        // Instant DB match
         const lower = value.toLowerCase()
         const matches = dbLocations
             .filter(loc => loc.toLowerCase().includes(lower))
-            .slice(0, 8)
+            .slice(0, 6)
         setDbMatches(matches)
-        setShowDropdown(matches.length > 0)
 
-        // Debounced Nominatim for city-level search (only if not well covered by DB)
+        // Nominatim — skip for abstract terms like "worldwide", "remote"
+        const isAbstractTerm = SKIP_NOMINATIM.some(t => value.toLowerCase().includes(t))
         if (debounceRef.current) clearTimeout(debounceRef.current)
-        debounceRef.current = setTimeout(async () => {
-            setLoading(true)
-            try {
-                const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=4`
-                const res = await fetch(url, { headers: { "Accept-Language": "en" } })
-                if (res.ok) {
-                    const data: NominatimResult[] = await res.json()
-                    // Deduplicate and exclude labels already covered by DB matches
-                    const seen = new Set(matches.map(m => m.toLowerCase()))
-                    const unique = data.filter(r => {
-                        const label = formatNominatim(r).toLowerCase()
-                        if (seen.has(label)) return false
-                        seen.add(label)
-                        return true
-                    })
-                    setNominatimResults(unique)
-                    setShowDropdown(matches.length > 0 || unique.length > 0)
+
+        if (!isAbstractTerm && value.length >= 2) {
+            debounceRef.current = setTimeout(async () => {
+                setLoading(true)
+                try {
+                    const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(value)}&format=json&addressdetails=1&limit=3`
+                    const res = await fetch(url, { headers: { "Accept-Language": "en" } })
+                    if (res.ok) {
+                        const data: NominatimResult[] = await res.json()
+                        const seen = new Set(matches.map(m => m.toLowerCase()))
+                        seen.add(value.toLowerCase()) // skip exact match to avoid dupe
+                        const unique = data.filter(r => {
+                            const label = formatNominatim(r).toLowerCase()
+                            if (seen.has(label)) return false
+                            seen.add(label)
+                            return true
+                        })
+                        setNominatimResults(unique)
+                    }
+                } catch {
+                    // ignore
+                } finally {
+                    setLoading(false)
                 }
-            } catch {
-                // network fail — DB results still shown
-            } finally {
-                setLoading(false)
-            }
-        }, 400)
+            }, 400)
+        } else {
+            setNominatimResults([])
+        }
     }
 
-    const handleSelectDB = (loc: string) => {
-        setQuery(loc)
-        setShowDropdown(false)
-        onLocationChange(loc)
-    }
-
-    const handleSelectNominatim = (r: NominatimResult) => {
-        const label = formatNominatim(r)
-        setQuery(label)
-        setShowDropdown(false)
-        onLocationChange(label)
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter" && query.trim()) {
+            applyFilter(query.trim())
+        }
+        if (e.key === "Escape") {
+            setShowDropdown(false)
+        }
     }
 
     const handleClear = () => {
@@ -129,8 +141,6 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
         onLocationChange(null)
     }
 
-    const hasResults = dbMatches.length > 0 || nominatimResults.length > 0
-
     return (
         <div ref={containerRef} className="relative w-full">
             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -138,7 +148,8 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
                 type="text"
                 value={query}
                 onChange={(e) => handleInputChange(e.target.value)}
-                onFocus={() => hasResults && setShowDropdown(true)}
+                onFocus={() => query.trim() && setShowDropdown(true)}
+                onKeyDown={handleKeyDown}
                 placeholder="Location..."
                 className="w-full pl-9 pr-8 py-2.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition-all bg-white"
             />
@@ -156,32 +167,43 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
             )}
 
             {/* Dropdown */}
-            {showDropdown && hasResults && (
+            {showDropdown && query.trim() && (
                 <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden max-h-72 overflow-y-auto">
-                    {/* DB locations — these always work for filtering */}
+
+                    {/* ① Direct apply — always shown first */}
+                    <button
+                        onMouseDown={() => applyFilter(query.trim())}
+                        className="w-full text-left px-4 py-2.5 hover:bg-blue-600 hover:text-white transition-colors flex items-center gap-2.5 text-sm border-b group"
+                    >
+                        <Search className="h-3.5 w-3.5 text-blue-500 group-hover:text-white flex-shrink-0" />
+                        <span>Filter by <strong>&quot;{query.trim()}&quot;</strong></span>
+                        <span className="ml-auto text-xs text-muted-foreground group-hover:text-blue-100">↵ Enter</span>
+                    </button>
+
+                    {/* ② DB matches */}
                     {dbMatches.length > 0 && (
                         <>
-                            <div className="px-3 py-1 text-xs text-muted-foreground bg-gray-50 border-b font-medium">
-                                Available in database
+                            <div className="px-3 py-1 text-xs text-muted-foreground bg-gray-50 border-b font-medium tracking-wide uppercase">
+                                From job listings
                             </div>
                             {dbMatches.map((loc) => (
                                 <button
                                     key={`db-${loc}`}
-                                    onMouseDown={() => handleSelectDB(loc)}
+                                    onMouseDown={() => applyFilter(loc)}
                                     className="w-full text-left px-4 py-2 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-center gap-2 text-sm"
                                 >
-                                    <MapPin className="h-3.5 w-3.5 text-blue-500 flex-shrink-0" />
+                                    <MapPin className="h-3.5 w-3.5 text-blue-400 flex-shrink-0" />
                                     {loc}
                                 </button>
                             ))}
                         </>
                     )}
 
-                    {/* Nominatim results — additional city/country search */}
+                    {/* ③ Nominatim results */}
                     {nominatimResults.length > 0 && (
                         <>
-                            <div className="px-3 py-1 text-xs text-muted-foreground bg-gray-50 border-b font-medium">
-                                Search globally
+                            <div className="px-3 py-1 text-xs text-muted-foreground bg-gray-50 border-b font-medium tracking-wide uppercase">
+                                Map search
                             </div>
                             {nominatimResults.map((r) => {
                                 const label = formatNominatim(r)
@@ -189,7 +211,7 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
                                 return (
                                     <button
                                         key={`osm-${r.place_id}`}
-                                        onMouseDown={() => handleSelectNominatim(r)}
+                                        onMouseDown={() => applyFilter(label)}
                                         className="w-full text-left px-4 py-2 hover:bg-blue-50 hover:text-blue-700 transition-colors flex items-start gap-2 text-sm"
                                     >
                                         <MapPin className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
@@ -202,10 +224,6 @@ export function LocationSearch({ onLocationChange, selectedLocation, dbLocations
                             })}
                         </>
                     )}
-
-                    <div className="px-3 py-1 bg-gray-50 border-t text-xs text-muted-foreground">
-                        Powered by OpenStreetMap
-                    </div>
                 </div>
             )}
         </div>
