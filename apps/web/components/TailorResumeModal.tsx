@@ -26,41 +26,11 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadUrl, setDownloadUrl] = useState("")
-    const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
-        setStatus("tailoring")
-        setErrorMessage("")
-
-        try {
-            const response = await fetch(`/api/tailor-resume`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ resumeId, jobId, jobCompany })
-            })
-
-            if (!response.ok) {
-                const errorText = await response.text()
-                throw new Error("Failed to tailor resume: " + errorText)
-            }
-
-            const data = await response.json()
-
-            if (!data.fileId) {
-                throw new Error("Missing fileId in response")
-            }
-
-            setDownloadUrl(`/api/download-resume?fileId=${data.fileId}`)
-            setDownloadFilename(data.filename || "Tailored_Resume.pdf")
-            setStatus("success")
-        } catch (error: any) {
-            console.error("Tailoring error:", error)
-            setStatus("error")
-            setErrorMessage(error.message || "An unexpected error occurred.")
-        }
+        // We now just transition to success immediately to let the user click the native download link
+        // which handles the actual tailoring server-side.
+        setStatus("success")
     }
 
     // Reset status when modal closes
@@ -129,12 +99,12 @@ export function TailorResumeModal({
                                     Close
                                 </Button>
                                 <Button
-                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    className="bg-blue-600 hover:bg-blue-700 text-white w-full"
                                     asChild
                                 >
-                                    <a href={downloadUrl} download={downloadFilename}>
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download PDF
+                                    <a href={`/api/tailor-resume?resumeId=${resumeId}&jobId=${jobId}&jobCompany=${encodeURIComponent(jobCompany)}`}>
+                                        <Sparkles className="w-4 h-4 mr-2" />
+                                        Generate & Download PDF
                                     </a>
                                 </Button>
                             </div>
