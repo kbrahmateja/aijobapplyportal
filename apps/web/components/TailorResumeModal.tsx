@@ -25,8 +25,9 @@ export function TailorResumeModal({
 }: TailorResumeModalProps) {
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
+    const [isDownloading, setIsDownloading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadUrl, setDownloadUrl] = useState("")
+    const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
     const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
@@ -57,11 +58,19 @@ export function TailorResumeModal({
             if (!data.download_url) {
                 throw new Error("No download link returned from server.")
             }
-            // data.download_url is e.g. /api/resumes/download/uuid_here/Tailored_Resume.pdf
-            // We transform it to hit our Next.js rewrite proxy, preserving the clean URL structure
-            const rewriteUrl = data.download_url.replace('/api/resumes/download/', '/api/downloads/')
+            // We transform the backend URL into a proxy URL using our Next.js backend.
+            // This bypasses cross-origin restrictions completely.
+            const proxyUrl = `/api/download?url=${encodeURIComponent(apiUrl + data.download_url)}&filename=${encodeURIComponent(data.filename || "Tailored_Resume.pdf")}`
 
-            setDownloadUrl(rewriteUrl)
+            // Fetch the proxy URL natively into a Blob
+            const proxyResponse = await fetch(proxyUrl)
+            if (!proxyResponse.ok) {
+                throw new Error("Failed to download PDF from proxy")
+            }
+
+            const pdfBlob = await proxyResponse.blob()
+
+            setDownloadBlob(pdfBlob)
             setDownloadFilename(data.filename || "Tailored_Resume.pdf")
             setStatus("success")
         } catch (error: any) {
@@ -76,7 +85,7 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                setDownloadUrl("")
+                setDownloadBlob(null)
                 setDownloadFilename("")
             }, 300)
         }
@@ -138,12 +147,40 @@ export function TailorResumeModal({
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    asChild
+                                    disabled={isDownloading}
+                                    onClick={async () => {
+                                        if (downloadBlob && downloadFilename) {
+                                            setIsDownloading(true)
+                                            try {
+                                                const objectUrl = window.URL.createObjectURL(downloadBlob)
+                                                const link = document.createElement('a')
+                                                link.href = objectUrl
+                                                link.download = downloadFilename
+                                                document.body.appendChild(link)
+                                                link.click()
+
+                                                // Cleanup object URL immediately
+                                                setTimeout(() => {
+                                                    document.body.removeChild(link)
+                                                    window.URL.revokeObjectURL(objectUrl)
+                                                }, 100)
+                                            } finally {
+                                                setIsDownloading(false)
+                                            }
+                                        }
+                                    }}
                                 >
-                                    <a href={downloadUrl} download={downloadFilename}>
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download PDF
-                                    </a>
+                                    {isDownloading ? (
+                                        <>
+                                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                            Downloading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download className="w-4 h-4 mr-2" />
+                                            Download PDF
+                                        </>
+                                    )}
                                 </Button>
                             </div>
                         </div>
