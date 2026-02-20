@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, CheckCircle2, FileText, Sparkles } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
+import { saveAs } from "file-saver"
 
 interface TailorResumeModalProps {
     isOpen: boolean
@@ -26,7 +27,7 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadDataUrl, setDownloadDataUrl] = useState("")
+    const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
     const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
@@ -54,31 +55,21 @@ export function TailorResumeModal({
             // The response is a PDF Blob
             const blob = await response.blob()
 
-            // Try to use the filename from the disposition header if possible, else fallback
-            const contentDisposition = response.headers.get('Content-Disposition')
-            let filename = `Tailored_Resume_${jobCompany.replace(/\s+/g, '_')}.pdf`
-            if (contentDisposition) {
-                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/)
-                if (filenameMatch && filenameMatch.length === 2) {
-                    filename = filenameMatch[1].replace(/"/g, '')
+            // Guaranteed safe filename fallback
+            let filename = "Tailored_Resume.pdf"
+
+            try {
+                // Try to use the job company if provided
+                if (jobCompany && jobCompany.trim().length > 0) {
+                    filename = `Tailored_Resume_${jobCompany.replace(/[^a-zA-Z0-9.\-_]/g, '_')}.pdf`
                 }
+            } catch (err) {
+                console.warn("Could not parse company name for filename:", err)
             }
 
-            // Strictly enforce safe filename characters just in case
-            filename = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_')
-
-            // Encode PDF as Base64 Data URI to bypass strict Mac Safari/Chrome blob link requirements
-            const reader = new FileReader()
-            reader.readAsDataURL(blob)
-            reader.onloadend = () => {
-                let base64data = reader.result as string
-                // Force octet-stream to ensure browser downloads it rather than opening internal viewer
-                base64data = base64data.replace("data:application/pdf", "data:application/octet-stream")
-
-                setDownloadDataUrl(base64data)
-                setDownloadFilename(filename)
-                setStatus("success")
-            }
+            setDownloadBlob(blob)
+            setDownloadFilename(filename)
+            setStatus("success")
         } catch (error: any) {
             console.error("Tailoring error:", error)
             setStatus("error")
@@ -91,7 +82,7 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                setDownloadDataUrl("")
+                setDownloadBlob(null)
                 setDownloadFilename("")
             }, 300)
         }
@@ -153,12 +144,16 @@ export function TailorResumeModal({
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    asChild
+                                    onClick={() => {
+                                        if (downloadBlob && downloadFilename) {
+                                            // Force octet-stream to override PDF Viewers
+                                            const forceDownloadBlob = new Blob([downloadBlob], { type: "application/octet-stream" })
+                                            saveAs(forceDownloadBlob, downloadFilename || "Tailored_Resume.pdf")
+                                        }
+                                    }}
                                 >
-                                    <a href={downloadDataUrl} download={downloadFilename}>
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download PDF
-                                    </a>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download PDF
                                 </Button>
                             </div>
                         </div>
