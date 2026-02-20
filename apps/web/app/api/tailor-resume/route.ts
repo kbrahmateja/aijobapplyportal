@@ -46,8 +46,8 @@ export async function POST(request: Request) {
         const filename = `Tailored_Resume_${safeCompany}.pdf`
 
         // Construct public physical save path
-        const fileId = uuidv4().replace(/-/g, "")
-        const uniqueFilename = `${fileId}_${filename}`
+        // We omit any UUIDs so the user sees a perfectly clean URL.
+        const uniqueFilename = filename
         const downloadsDir = path.join(process.cwd(), "public", "downloads")
 
         // Ensure directory exists
