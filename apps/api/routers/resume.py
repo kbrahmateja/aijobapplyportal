@@ -204,19 +204,5 @@ async def tailor_resume(
         "filename": filename
     })
 
-@router.get("/download/{file_id}")
-async def download_tailored_pdf(file_id: str, filename: str = "Tailored_Resume.pdf"):
-    """
-    Downloads a temporarily stored tailored PDF file.
-    """
-    filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="File expired or not found")
-        
-    return FileResponse(
-        filepath, 
-        media_type="application/pdf", 
-        filename=filename,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
-    )
+
 

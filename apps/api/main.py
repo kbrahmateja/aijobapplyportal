@@ -1,5 +1,7 @@
+import os
 from typing import List
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Job
@@ -40,6 +42,25 @@ app.include_router(job.router, prefix="/api/jobs", tags=["jobs"])
 app.include_router(resume.router, prefix="/api/resumes", tags=["resumes"], dependencies=[Depends(auth.get_current_user)])
 app.include_router(matching.router, prefix="/api/resumes", tags=["matching"], dependencies=[Depends(auth.get_current_user)])
 app.include_router(application.router, prefix="/api/applications", tags=["applications"], dependencies=[Depends(auth.get_current_user)])
+
+TEMP_DOWNLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "temp_downloads")
+
+@app.get("/api/resumes/download/{file_id}")
+async def download_tailored_pdf(file_id: str, filename: str = "Tailored_Resume.pdf"):
+    """
+    Downloads a temporarily stored tailored PDF file without requiring Bearer auth.
+    This allows native browser <a href="..." download> to work correctly.
+    """
+    filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File expired or not found")
+        
+    return FileResponse(
+        filepath, 
+        media_type="application/pdf", 
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+    )
 
 @app.get("/")
 async def root():
