@@ -57,10 +57,11 @@ export function TailorResumeModal({
             if (!data.download_url) {
                 throw new Error("No download link returned from server.")
             }
+            // data.download_url is e.g. /api/resumes/download/uuid_here/Tailored_Resume.pdf
+            // We transform it to hit our Next.js rewrite proxy, preserving the clean URL structure
+            const rewriteUrl = data.download_url.replace('/api/resumes/download/', '/api/downloads/')
 
-            const fullDownloadUrl = `/api/download?url=${encodeURIComponent(apiUrl + data.download_url)}&filename=${encodeURIComponent(data.filename || "Tailored_Resume.pdf")}`
-
-            setDownloadUrl(fullDownloadUrl)
+            setDownloadUrl(rewriteUrl)
             setDownloadFilename(data.filename || "Tailored_Resume.pdf")
             setStatus("success")
         } catch (error: any) {
