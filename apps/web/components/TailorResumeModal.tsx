@@ -49,11 +49,11 @@ export function TailorResumeModal({
 
             const data = await response.json()
 
-            if (!data.download_url) {
-                throw new Error("Missing download URL in response")
+            if (!data.fileId) {
+                throw new Error("Missing fileId in response")
             }
 
-            setDownloadUrl(data.download_url)
+            setDownloadUrl(`/api/download-resume?fileId=${data.fileId}`)
             setDownloadFilename(data.filename || "Tailored_Resume.pdf")
             setStatus("success")
         } catch (error: any) {

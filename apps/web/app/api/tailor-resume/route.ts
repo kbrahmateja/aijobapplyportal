@@ -60,11 +60,9 @@ export async function POST(request: Request) {
         // Give Next.js a moment to physically write the bytes to the hard drive public folder
         await writeFile(filePath, Buffer.from(pdfBuffer))
 
-        // Give the final frontend a pristine, physical Next.js static asset URL
-        const staticDownloadUrl = `/downloads/${uniqueFilename}`
-
+        // Return the clean identifier and filename
         return NextResponse.json({
-            download_url: staticDownloadUrl,
+            fileId: uniqueFilename,
             filename: filename
         })
 

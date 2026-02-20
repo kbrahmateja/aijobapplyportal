@@ -19,8 +19,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body className={`${inter.className} flex flex-col min-h-screen`}>
+      <html lang="en" suppressHydrationWarning>
+        <body className={`${inter.className} flex flex-col min-h-screen`} suppressHydrationWarning>
           <Navbar />
           <main className="flex-1">
             {children}
