@@ -147,7 +147,11 @@ export function TailorResumeModal({
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
                                     onClick={() => {
                                         if (downloadBlob) {
-                                            saveAs(downloadBlob, downloadFilename)
+                                            // FORCE the mime-type to octet-stream. 
+                                            // This prevents browser PDF viewers from intercepting the blob
+                                            // and forces a strict file download with our explicit filename.
+                                            const forceDownloadBlob = new Blob([downloadBlob], { type: "application/octet-stream" })
+                                            saveAs(forceDownloadBlob, downloadFilename)
                                         }
                                     }}
                                 >
