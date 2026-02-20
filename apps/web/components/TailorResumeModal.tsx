@@ -34,39 +34,27 @@ export function TailorResumeModal({
         setErrorMessage("")
 
         try {
-            const token = await getToken()
-            const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"
-
-            const response = await fetch(`${apiUrl}/api/resumes/${resumeId}/tailor`, {
+            const response = await fetch(`/api/tailor-resume`, {
                 method: "POST",
                 headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
+                    "Content-Type": "application/json"
                 },
-                body: JSON.stringify({ job_id: jobId })
+                body: JSON.stringify({ resumeId, jobId, jobCompany })
             })
 
             if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.detail || "Failed to tailor resume")
+                const errorText = await response.text()
+                throw new Error("Failed to tailor resume: " + errorText)
             }
 
-            // Extract the filename from Content-Disposition if present, else fallback
-            const contentDisposition = response.headers.get("Content-Disposition")
-            let filename = "Tailored_Resume.pdf"
-            if (contentDisposition) {
-                const match = contentDisposition.match(/filename="?([^"]+)"?/)
-                if (match && match[1]) {
-                    filename = match[1]
-                }
+            const data = await response.json()
+
+            if (!data.download_url) {
+                throw new Error("Missing download URL in response")
             }
 
-            // Immediately create the object URL from the Blob response natively
-            const pdfBlob = await response.blob()
-            const objectUrl = window.URL.createObjectURL(pdfBlob)
-
-            setDownloadUrl(objectUrl)
-            setDownloadFilename(filename)
+            setDownloadUrl(data.download_url)
+            setDownloadFilename(data.filename || "Tailored_Resume.pdf")
             setStatus("success")
         } catch (error: any) {
             console.error("Tailoring error:", error)
@@ -80,9 +68,6 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                if (downloadUrl) {
-                    window.URL.revokeObjectURL(downloadUrl)
-                }
                 setDownloadUrl("")
                 setDownloadFilename("")
             }, 300)
