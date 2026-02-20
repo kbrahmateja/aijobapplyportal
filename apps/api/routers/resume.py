@@ -1,5 +1,7 @@
+import os
+import uuid
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, FileResponse, JSONResponse
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Resume, User, Job
@@ -16,6 +18,10 @@ embedding_service = EmbeddingService()
 analyst = ResumeAnalyst()
 tailor_service = ResumeTailor()
 pdf_generator = PDFGenerator()
+
+# Set up temporary directory for downloads
+TEMP_DOWNLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "..", "temp_downloads")
+os.makedirs(TEMP_DOWNLOADS_DIR, exist_ok=True)
 
 # Accepted MIME types → mapped to common extensions for display
 ACCEPTED_MIME_TYPES = {
@@ -180,16 +186,37 @@ async def tailor_resume(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {e}")
 
-    # 5. Return PDF as downloadable file
+    # 5. Return PDF as downloadable file via temporary URL
     # Clean company name for filename
     clean_company = "".join([c for c in job.company if c.isalnum() or c in (" ", "_")]).strip()
     filename = f"Tailored_Resume_{clean_company.replace(' ', '_')}.pdf"
 
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"'
-        }
+    # Save to temp dir
+    file_id = uuid.uuid4().hex
+    filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
+    
+    with open(filepath, "wb") as f:
+        f.write(pdf_bytes)
+
+    # Return the JSON pointing to the download URL
+    return JSONResponse({
+        "download_url": f"/api/resumes/download/{file_id}?filename={filename}",
+        "filename": filename
+    })
+
+@router.get("/download/{file_id}")
+async def download_tailored_pdf(file_id: str, filename: str = "Tailored_Resume.pdf"):
+    """
+    Downloads a temporarily stored tailored PDF file.
+    """
+    filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
+    if not os.path.exists(filepath):
+        raise HTTPException(status_code=404, detail="File expired or not found")
+        
+    return FileResponse(
+        filepath, 
+        media_type="application/pdf", 
+        filename=filename,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
 

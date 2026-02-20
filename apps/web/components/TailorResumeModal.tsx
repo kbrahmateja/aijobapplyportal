@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, CheckCircle2, FileText, Sparkles } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
-import { saveAs } from "file-saver"
 
 interface TailorResumeModalProps {
     isOpen: boolean
@@ -27,7 +26,7 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
+    const [downloadUrl, setDownloadUrl] = useState("")
     const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
@@ -52,23 +51,17 @@ export function TailorResumeModal({
                 throw new Error(errorData.detail || "Failed to tailor resume")
             }
 
-            // The response is a PDF Blob
-            const blob = await response.blob()
+            // The response is now JSON pointing to a temporary download URL
+            const data = await response.json()
 
-            // Guaranteed safe filename fallback
-            let filename = "Tailored_Resume.pdf"
-
-            try {
-                // Try to use the job company if provided
-                if (jobCompany && jobCompany.trim().length > 0) {
-                    filename = `Tailored_Resume_${jobCompany.replace(/[^a-zA-Z0-9.\-_]/g, '_')}.pdf`
-                }
-            } catch (err) {
-                console.warn("Could not parse company name for filename:", err)
+            if (!data.download_url) {
+                throw new Error("No download link returned from server.")
             }
 
-            setDownloadBlob(blob)
-            setDownloadFilename(filename)
+            const fullDownloadUrl = `${apiUrl}${data.download_url}`
+
+            setDownloadUrl(fullDownloadUrl)
+            setDownloadFilename(data.filename || "Tailored_Resume.pdf")
             setStatus("success")
         } catch (error: any) {
             console.error("Tailoring error:", error)
@@ -82,7 +75,7 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                setDownloadBlob(null)
+                setDownloadUrl("")
                 setDownloadFilename("")
             }, 300)
         }
@@ -144,16 +137,12 @@ export function TailorResumeModal({
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => {
-                                        if (downloadBlob && downloadFilename) {
-                                            // Force octet-stream to override PDF Viewers
-                                            const forceDownloadBlob = new Blob([downloadBlob], { type: "application/octet-stream" })
-                                            saveAs(forceDownloadBlob, downloadFilename || "Tailored_Resume.pdf")
-                                        }
-                                    }}
+                                    asChild
                                 >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download PDF
+                                    <a href={downloadUrl} download={downloadFilename}>
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download PDF
+                                    </a>
                                 </Button>
                             </div>
                         </div>
