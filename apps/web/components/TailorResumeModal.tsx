@@ -5,7 +5,6 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, CheckCircle2, FileText, Sparkles } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
-import { saveAs } from "file-saver"
 
 interface TailorResumeModalProps {
     isOpen: boolean
@@ -27,7 +26,7 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
+    const [downloadDataUrl, setDownloadDataUrl] = useState("")
     const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
@@ -68,9 +67,18 @@ export function TailorResumeModal({
             // Strictly enforce safe filename characters just in case
             filename = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_')
 
-            setDownloadBlob(blob)
-            setDownloadFilename(filename)
-            setStatus("success")
+            // Encode PDF as Base64 Data URI to bypass strict Mac Safari/Chrome blob link requirements
+            const reader = new FileReader()
+            reader.readAsDataURL(blob)
+            reader.onloadend = () => {
+                let base64data = reader.result as string
+                // Force octet-stream to ensure browser downloads it rather than opening internal viewer
+                base64data = base64data.replace("data:application/pdf", "data:application/octet-stream")
+
+                setDownloadDataUrl(base64data)
+                setDownloadFilename(filename)
+                setStatus("success")
+            }
         } catch (error: any) {
             console.error("Tailoring error:", error)
             setStatus("error")
@@ -83,7 +91,7 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                setDownloadBlob(null)
+                setDownloadDataUrl("")
                 setDownloadFilename("")
             }, 300)
         }
@@ -145,18 +153,12 @@ export function TailorResumeModal({
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    onClick={() => {
-                                        if (downloadBlob) {
-                                            // FORCE the mime-type to octet-stream. 
-                                            // This prevents browser PDF viewers from intercepting the blob
-                                            // and forces a strict file download with our explicit filename.
-                                            const forceDownloadBlob = new Blob([downloadBlob], { type: "application/octet-stream" })
-                                            saveAs(forceDownloadBlob, downloadFilename)
-                                        }
-                                    }}
+                                    asChild
                                 >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Download PDF
+                                    <a href={downloadDataUrl} download={downloadFilename}>
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download PDF
+                                    </a>
                                 </Button>
                             </div>
                         </div>
