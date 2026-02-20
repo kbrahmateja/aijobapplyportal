@@ -144,12 +144,24 @@ export function TailorResumeModal({
                                 </Button>
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
-                                    asChild
+                                    onClick={() => {
+                                        // Force Safari/Chrome to respect the download attribute
+                                        // by creating a fresh anchor tag on click
+                                        const a = document.createElement("a")
+                                        a.style.display = "none"
+                                        a.href = downloadUrl
+                                        a.download = downloadFilename
+                                        document.body.appendChild(a)
+                                        a.click()
+
+                                        // Cleanup after a second
+                                        setTimeout(() => {
+                                            document.body.removeChild(a)
+                                        }, 1000)
+                                    }}
                                 >
-                                    <a href={downloadUrl} download={downloadFilename}>
-                                        <Download className="w-4 h-4 mr-2" />
-                                        Download PDF
-                                    </a>
+                                    <Download className="w-4 h-4 mr-2" />
+                                    Download PDF
                                 </Button>
                             </div>
                         </div>
