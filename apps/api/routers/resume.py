@@ -186,24 +186,18 @@ async def tailor_resume(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {e}")
 
-    # 5. Return PDF as downloadable file via temporary URL
+    # 5. Return PDF directly as raw bytes
     # Clean company name for filename
     clean_company = "".join([c for c in job.company if c.isalnum() or c in (" ", "_")]).strip()
     filename = f"Tailored_Resume_{clean_company.replace(' ', '_')}.pdf"
 
-    # Save to temp dir
-    file_id = uuid.uuid4().hex
-    filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
-    
-    with open(filepath, "wb") as f:
-        f.write(pdf_bytes)
-
-    # Return the JSON pointing to the download URL, with the filename literally in the URL path.
-    # This physically forces all download managers to use the correct name regardless of headers.
-    return JSONResponse({
-        "download_url": f"/api/resumes/download/{file_id}/{filename}",
-        "filename": filename
-    })
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"'
+        }
+    )
 
 
 
