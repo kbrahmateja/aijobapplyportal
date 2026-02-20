@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { Loader2, Download, CheckCircle2, FileText, Sparkles } from "lucide-react"
 import { useAuth } from "@clerk/nextjs"
+import { saveAs } from "file-saver"
 
 interface TailorResumeModalProps {
     isOpen: boolean
@@ -26,7 +27,7 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
-    const [downloadUrl, setDownloadUrl] = useState("")
+    const [downloadBlob, setDownloadBlob] = useState<Blob | null>(null)
     const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
@@ -53,7 +54,6 @@ export function TailorResumeModal({
 
             // The response is a PDF Blob
             const blob = await response.blob()
-            const url = window.URL.createObjectURL(blob)
 
             // Try to use the filename from the disposition header if possible, else fallback
             const contentDisposition = response.headers.get('Content-Disposition')
@@ -65,7 +65,10 @@ export function TailorResumeModal({
                 }
             }
 
-            setDownloadUrl(url)
+            // Strictly enforce safe filename characters just in case
+            filename = filename.replace(/[^a-zA-Z0-9.\-_]/g, '_')
+
+            setDownloadBlob(blob)
             setDownloadFilename(filename)
             setStatus("success")
         } catch (error: any) {
@@ -80,10 +83,8 @@ export function TailorResumeModal({
         if (!open) {
             setTimeout(() => {
                 setStatus("idle")
-                if (downloadUrl) {
-                    window.URL.revokeObjectURL(downloadUrl)
-                    setDownloadUrl("")
-                }
+                setDownloadBlob(null)
+                setDownloadFilename("")
             }, 300)
         }
         onOpenChange(open)
@@ -145,19 +146,9 @@ export function TailorResumeModal({
                                 <Button
                                     className="bg-blue-600 hover:bg-blue-700 text-white"
                                     onClick={() => {
-                                        // Force Safari/Chrome to respect the download attribute
-                                        // by creating a fresh anchor tag on click
-                                        const a = document.createElement("a")
-                                        a.style.display = "none"
-                                        a.href = downloadUrl
-                                        a.download = downloadFilename
-                                        document.body.appendChild(a)
-                                        a.click()
-
-                                        // Cleanup after a second
-                                        setTimeout(() => {
-                                            document.body.removeChild(a)
-                                        }, 1000)
+                                        if (downloadBlob) {
+                                            saveAs(downloadBlob, downloadFilename)
+                                        }
                                     }}
                                 >
                                     <Download className="w-4 h-4 mr-2" />
