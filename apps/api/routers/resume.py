@@ -198,9 +198,10 @@ async def tailor_resume(
     with open(filepath, "wb") as f:
         f.write(pdf_bytes)
 
-    # Return the JSON pointing to the download URL
+    # Return the JSON pointing to the download URL, with the filename literally in the URL path.
+    # This physically forces all download managers to use the correct name regardless of headers.
     return JSONResponse({
-        "download_url": f"/api/resumes/download/{file_id}?filename={filename}",
+        "download_url": f"/api/resumes/download/{file_id}/{filename}",
         "filename": filename
     })
 

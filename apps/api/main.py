@@ -45,11 +45,13 @@ app.include_router(application.router, prefix="/api/applications", tags=["applic
 
 TEMP_DOWNLOADS_DIR = os.path.join(os.path.dirname(__file__), "..", "..", "temp_downloads")
 
-@app.get("/api/resumes/download/{file_id}")
-async def download_tailored_pdf(file_id: str, filename: str = "Tailored_Resume.pdf"):
+@app.get("/api/resumes/download/{file_id}/{filename}")
+async def download_tailored_pdf(file_id: str, filename: str):
     """
     Downloads a temporarily stored tailored PDF file without requiring Bearer auth.
     This allows native browser <a href="..." download> to work correctly.
+    The filename is injected directly into the URL path so that browsers with strict
+    header-ignoring cross-origin constraints are physically forced to name it properly.
     """
     filepath = os.path.join(TEMP_DOWNLOADS_DIR, f"{file_id}.pdf")
     if not os.path.exists(filepath):
@@ -58,8 +60,7 @@ async def download_tailored_pdf(file_id: str, filename: str = "Tailored_Resume.p
     return FileResponse(
         filepath, 
         media_type="application/pdf", 
-        filename=filename,
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        filename=filename
     )
 
 @app.get("/")
