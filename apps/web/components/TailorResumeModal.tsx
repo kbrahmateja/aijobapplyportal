@@ -26,6 +26,8 @@ export function TailorResumeModal({
     const { getToken } = useAuth()
     const [status, setStatus] = useState<"idle" | "tailoring" | "success" | "error">("idle")
     const [errorMessage, setErrorMessage] = useState("")
+    const [downloadUrl, setDownloadUrl] = useState("")
+    const [downloadFilename, setDownloadFilename] = useState("")
 
     const handleTailor = async () => {
         setStatus("tailoring")
@@ -53,9 +55,6 @@ export function TailorResumeModal({
             const blob = await response.blob()
             const url = window.URL.createObjectURL(blob)
 
-            // Create a temporary link to download the file
-            const a = document.createElement("a")
-            a.href = url
             // Try to use the filename from the disposition header if possible, else fallback
             const contentDisposition = response.headers.get('Content-Disposition')
             let filename = `Tailored_Resume_${jobCompany.replace(/\s+/g, '_')}.pdf`
@@ -65,17 +64,9 @@ export function TailorResumeModal({
                     filename = filenameMatch[1].replace(/"/g, '')
                 }
             }
-            a.download = filename
-            document.body.appendChild(a)
-            a.click()
 
-            // Delay cleanup so the browser has time to read the 'download' attribute
-            // otherwise some browsers default to downloading the blob's UUID as the filename
-            setTimeout(() => {
-                document.body.removeChild(a)
-                window.URL.revokeObjectURL(url)
-            }, 1000)
-
+            setDownloadUrl(url)
+            setDownloadFilename(filename)
             setStatus("success")
         } catch (error: any) {
             console.error("Tailoring error:", error)
@@ -87,7 +78,13 @@ export function TailorResumeModal({
     // Reset status when modal closes
     const handleOpenChange = (open: boolean) => {
         if (!open) {
-            setTimeout(() => setStatus("idle"), 300)
+            setTimeout(() => {
+                setStatus("idle")
+                if (downloadUrl) {
+                    window.URL.revokeObjectURL(downloadUrl)
+                    setDownloadUrl("")
+                }
+            }, 300)
         }
         onOpenChange(open)
     }
@@ -136,16 +133,25 @@ export function TailorResumeModal({
                             </div>
                             <div className="space-y-1">
                                 <p className="font-medium text-green-900">Success!</p>
-                                <p className="text-sm text-green-700/80">Your tailored PDF has been downloaded.</p>
+                                <p className="text-sm text-green-700/80">Your tailored resume is ready!</p>
                             </div>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="mt-2"
-                                onClick={() => handleOpenChange(false)}
-                            >
-                                Close
-                            </Button>
+                            <div className="flex gap-3 mt-2">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => handleOpenChange(false)}
+                                >
+                                    Close
+                                </Button>
+                                <Button
+                                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                                    asChild
+                                >
+                                    <a href={downloadUrl} download={downloadFilename}>
+                                        <Download className="w-4 h-4 mr-2" />
+                                        Download PDF
+                                    </a>
+                                </Button>
+                            </div>
                         </div>
                     )}
 
