@@ -68,8 +68,13 @@ export function TailorResumeModal({
             a.download = filename
             document.body.appendChild(a)
             a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
+
+            // Delay cleanup so the browser has time to read the 'download' attribute
+            // otherwise some browsers default to downloading the blob's UUID as the filename
+            setTimeout(() => {
+                document.body.removeChild(a)
+                window.URL.revokeObjectURL(url)
+            }, 1000)
 
             setStatus("success")
         } catch (error: any) {
