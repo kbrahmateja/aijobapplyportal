@@ -58,7 +58,7 @@ export function TailorResumeModal({
                 throw new Error("No download link returned from server.")
             }
 
-            const fullDownloadUrl = `${apiUrl}${data.download_url}`
+            const fullDownloadUrl = `/api/download?url=${encodeURIComponent(apiUrl + data.download_url)}&filename=${encodeURIComponent(data.filename || "Tailored_Resume.pdf")}`
 
             setDownloadUrl(fullDownloadUrl)
             setDownloadFilename(data.filename || "Tailored_Resume.pdf")

@@ -10,7 +10,7 @@ class ResumeTailor:
     def __init__(self):
         self.logger = logging.getLogger(__name__)
         if settings.OPENAI_API_KEY:
-            self.llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0.7, openai_api_key=settings.OPENAI_API_KEY)
+            self.llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, openai_api_key=settings.OPENAI_API_KEY)
         else:
             self.llm = None
 
